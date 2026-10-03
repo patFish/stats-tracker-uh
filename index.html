@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -112,14 +112,14 @@ span.chip{cursor:default}
 <body data-tab="game">
 <header class="top"><div class="in">
   <div class="ttl"><b>Shift Tracker</b><span id="gamelabel"></span></div>
-  <div class="hs" id="hscore" aria-label="Score"></div>
+  <div class="hs" id="hscore" aria-label="Ergebnis"></div>
 </div></header>
 <main id="view"></main>
 <div id="goalbar"></div>
-<nav class="tabs" id="tabs" aria-label="Sections">
-  <button data-a="tab" data-id="game">Game</button>
-  <button data-a="tab" data-id="stats">Stats</button>
-  <button data-a="tab" data-id="setup">Setup</button>
+<nav class="tabs" id="tabs" aria-label="Bereiche">
+  <button data-a="tab" data-id="game">Spiel</button>
+  <button data-a="tab" data-id="stats">Statistik</button>
+  <button data-a="tab" data-id="setup">Einstellungen</button>
 </nav>
 <div id="sheet"></div>
 <input type="file" id="file" accept="application/json,.json" hidden data-c="impfile">
@@ -152,9 +152,9 @@ span.chip{cursor:default}
    settle() must run before every line-up / goalie / situation / phase / pause change.
    ===================================================================== */
 const KEY='shifttracker.v3';
-const STATES={EV:'Even',PP:'Power play',BP:'Box play'};
-const SEQ={PP:'PP',BP:'BP',FO:'Faceoff',TO:'Turnover',FH:'Free hit',OT:'Other'};
-const PAUSE_LABELS={tou:'Timeout us',tot:'Timeout them',ref:'Referee',inj:'Injury',oth:'Other'};
+const STATES={EV:'Gleichstand',PP:'Überzahl',BP:'Unterzahl'};
+const SEQ={PP:'PP',BP:'BP',FO:'Bully',TO:'Ballgewinn',FH:'Freischlag',OT:'Sonstiges'};
+const PAUSE_LABELS={tou:'Auszeit wir',tot:'Auszeit sie',ref:'Schiedsrichter',inj:'Verletzung',oth:'Sonstiges'};
 const mem={};
 const store={
   get(){try{return localStorage.getItem(KEY)}catch(e){return mem.v||null}},
@@ -247,7 +247,7 @@ function addToi(g,dt){
 function settle(g){                    // book the time since the last change to the current set-up
   const C=g.clock; if(!C.run) return;
   const now=Date.now(); let dt=(now-C.last)/1000; C.last=now;
-  if(C.sec+dt>=len()){dt=Math.max(0,len()-C.sec); C.sec=len(); C.run=false; C.label='Time up';}
+  if(C.sec+dt>=len()){dt=Math.max(0,len()-C.sec); C.sec=len(); C.run=false; C.label='Zeit abgelaufen';}
   else C.sec+=dt;
   if(dt>0) addToi(g,dt);
 }
@@ -311,7 +311,7 @@ function act(a,d){
     case 'evfloor': { const e=g.events.find(x=>x.id===sheet.id); if(!e) break;
       e.floor=e.floor.includes(d.id)?e.floor.filter(x=>x!==d.id):[...e.floor,d.id];
       if(!e.floor.includes(e.scorer)) e.scorer=null; if(!e.floor.includes(e.assist)&&e.assist!=='none') e.assist=null; break; }
-    case 'evdel': if(sheet.fresh||confirm('Delete this goal?')){removeEvent(sheet.id); sheet=null;} break;
+    case 'evdel': if(sheet.fresh||confirm('Dieses Tor löschen?')){removeEvent(sheet.id); sheet=null;} break;
     case 'closesheet': sheet=null; break;
     case 'showall': S.ui.showAll=!S.ui.showAll; break;
     case 'sfilter': S.ui.sfilter=d.id; break;
@@ -319,19 +319,19 @@ function act(a,d){
       if(d.k==='halfMin'){ settle(g); S.settings.halfMin=Math.min(45,Math.max(5,S.settings.halfMin+dl)); }
       if(d.k==='onFloor'){ settle(g); R().onFloor=Math.min(6,Math.max(1,R().onFloor+dl)); }
       break; }
-    case 'addplayer': R().blocks.find(x=>x.id===d.id).players.push({id:uid(),name:'New player',active:true}); break;
-    case 'addgoalie': R().goalies.push({id:uid(),name:'New goalie',active:true}); break;
-    case 'rm': if(confirm('Remove '+nameOf(d.id)+'? Past goals keep the name.')){
+    case 'addplayer': R().blocks.find(x=>x.id===d.id).players.push({id:uid(),name:'Neuer Spieler',active:true}); break;
+    case 'addgoalie': R().goalies.push({id:uid(),name:'Neuer Torhüter',active:true}); break;
+    case 'rm': if(confirm(nameOf(d.id)+' entfernen? Vergangene Tore behalten den Namen.')){
         settle(g); const f=findPlayer(d.id); if(f) f.p.active=false;
         if(L.goalie===d.id){const n=R().goalies.find(x=>x.active); L.goalie=n?n.id:null;} }
       break;
-    case 'newgame': if(confirm('Start a new game? Goals, clock and times of the current game are deleted (export first if needed). The roster stays.')){
+    case 'newgame': if(confirm('Neues Spiel starten? Tore, Uhr und Zeiten werden gelöscht (vorher exportieren falls nötig). Der Kader bleibt.')){
         S.game=newGame(R(),S.game.opponent); S.ui.tab='game'; sheet=null; } break;
-    case 'demo': if(confirm('Replace the current game with demo data?')){S.game=demoGame(); S.ui.tab='stats';} break;
+    case 'demo': if(confirm('Aktuelles Spiel durch Demodaten ersetzen?')){S.game=demoGame(); S.ui.tab='stats';} break;
     case 'expjson': download('shift-tracker-backup.json',JSON.stringify(S,null,2),'application/json'); return;
     case 'expcsv': download(`shift-stats-${(S.game.opponent||'game').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toCsv(),'text/csv'); return;
     case 'impjson': $('#file').click(); return;
-    case 'reset': if(confirm('Delete ALL data including the roster and restore the defaults?')){S=defaultState(); sheet=null;} break;
+    case 'reset': if(confirm('Alle Daten einschließlich des Kaders löschen und Standardwerte wiederherstellen?')){S=defaultState(); sheet=null;} break;
   }
   save(); render();
 }
@@ -345,8 +345,8 @@ function chg(c,v,d,el){
   if(c==='impfile'){const file=el.files[0]; el.value=''; if(!file) return;
     file.text().then(t=>{try{const s=JSON.parse(t);
       if(!(s&&s.v===3&&s.roster&&s.game)) throw 0;
-      if(confirm('Replace all current data with this backup?')){S=s;sheet=null;save();render();}
-    }catch(e){alert('This is not a valid backup file.')}}); return;}
+      if(confirm('Alle aktuellen Daten mit dieser Sicherung ersetzen?')){S=s;sheet=null;save();render();}
+    }catch(e){alert('Das ist keine gültige Sicherungsdatei.')}}); return;}
   if(c.startsWith('ev.')){
     const e=g.events.find(x=>x.id===sheet.id); if(!e) return; const k=c.slice(3);
     if(k==='type'){e.type=v; if(v==='GA'){e.scorer=null;e.assist=null;}}
@@ -385,25 +385,25 @@ function compute(g,filter){
 
 /* ---------- views ---------- */
 const PHASE={
-  pre:{label:'Not started',btn:'Start game',n:'start'},
-  h1:{label:'1st half',btn:'End 1st half',n:'endh1'},
-  break:{label:'Half-time',btn:'Start 2nd half',n:'starth2'},
-  h2:{label:'2nd half',btn:'End game',n:'endgame'},
-  end:{label:'Game ended',btn:'Reopen 2nd half',n:'reopen'}
+  pre:{label:'Nicht gestartet',btn:'Spiel starten',n:'start'},
+  h1:{label:'1. Halbzeit',btn:'1. Halbzeit beenden',n:'endh1'},
+  break:{label:'Halbzeit',btn:'2. Halbzeit starten',n:'starth2'},
+  h2:{label:'2. Halbzeit',btn:'Spiel beenden',n:'endgame'},
+  end:{label:'Spiel beendet',btn:'2. Halbzeit wieder öffnen',n:'reopen'}
 };
 const gameLabel=()=>S.game.opponent?'vs '+S.game.opponent:'';
 
 function viewClock(g){
   const C=g.clock, ph=PHASE[g.phase], half=inHalf(g);
   const timeUp=half&&C.sec>=len(), paused=half&&!C.run&&!timeUp;
-  const msg=timeUp?'Time is up':paused?('Paused'+(C.label?' · '+C.label:'')):half?'Running':'';
+  const msg=timeUp?'Zeit abgelaufen':paused?('Pausiert'+(C.label?' · '+C.label:'')):half?'Läuft':'';
   const start=ph.n==='start'||ph.n==='starth2';
   return `<section class="card">
     <div class="clhead"><b>${ph.label}</b>${msg?`<span class="pill ${paused||timeUp?'warn':''}">${esc(msg)}</span>`:''}</div>
     ${half||g.phase==='end'?`<div class="clrow">
-      <button class="clock" id="clock" data-a="clockedit" ${half?'':'disabled'} aria-label="Game clock, tap to correct">${fmtc(C.sec)}</button>
-      ${half?`<button class="primary big" data-a="${C.run?'pause':'resume'}" ${timeUp?'disabled':''}>${C.run?'Pause':'Resume'}</button>`:''}</div>`:''}
-    ${paused?`<div class="lab">Reason (optional)</div><div class="chips" style="margin-top:0">${Object.entries(PAUSE_LABELS).map(([k,v])=>
+      <button class="clock" id="clock" data-a="clockedit" ${half?'':'disabled'} aria-label="Spieluhr, tippen zum Korrigieren">${fmtc(C.sec)}</button>
+      ${half?`<button class="primary big" data-a="${C.run?'pause':'resume'}" ${timeUp?'disabled':''}>${C.run?'Pause':'Weiter'}</button>`:''}</div>`:''}
+    ${paused?`<div class="lab">Grund (optional)</div><div class="chips" style="margin-top:0">${Object.entries(PAUSE_LABELS).map(([k,v])=>
       `<button class="chip ${C.label===v?'sel':''}" data-a="plabel" data-id="${k}">${v}</button>`).join('')}</div>`:''}
     <button class="${start?'primary':'ghost'} wide" style="margin-top:12px" data-a="phase" data-n="${ph.n}">${ph.btn}</button>
   </section>`;
@@ -418,42 +418,42 @@ function viewGame(){
   const canRest=act_.length>R().onFloor, pen=L.pen;
   return viewClock(g)+`
   <section class="card">
-    <h2>On the floor now</h2>
+    <h2>Auf dem Feld</h2>
     <div class="blocks">${R().blocks.map(b=>`
       <button class="blk ${b.id===L.block?'sel':''}" data-a="block" data-id="${b.id}" aria-pressed="${b.id===L.block}">
         <b>${esc(b.name)}</b><small>${esc(activePlayers(b).map(p=>first(p.name)).join(', '))}</small>
       </button>`).join('')}</div>
     <div class="chips">${act_.map(p=>{const r=rest.includes(p.id);
       return canRest
-        ? `<button class="chip ${r?'off':'on'}" data-a="swap" data-id="${p.id}">${esc(short(p.name))}<small>${r?'resting':'on floor'}</small></button>`
-        : `<span class="chip on">${esc(short(p.name))}<small>on floor</small></span>`;}).join('')}</div>
-    ${canRest?'<div class="muted" style="margin-top:8px">Tap a player to send him off. The resting player comes back on.</div>':''}
+        ? `<button class="chip ${r?'off':'on'}" data-a="swap" data-id="${p.id}">${esc(short(p.name))}<small>${r?'Bank':'Feld'}</small></button>`
+        : `<span class="chip on">${esc(short(p.name))}<small>Feld</small></span>`;}).join('')}</div>
+    ${canRest?'<div class="muted" style="margin-top:8px">Spieler antippen zum Wechsel. Der wartende Spieler kommt rein.</div>':''}
   </section>
   <section class="card">
     <h2>Situation</h2>
     <div class="seg">
-      <button class="chip ${!pen?'sel':''}" data-a="penend">Even</button>
-      <button class="chip ${pen&&pen.kind==='PP'?'sel':''}" data-a="pensheet" data-k="PP">Power play</button>
-      <button class="chip ${pen&&pen.kind==='BP'?'sel':''}" data-a="pensheet" data-k="BP">Box play</button>
+      <button class="chip ${!pen?'sel':''}" data-a="penend">Gleichstand</button>
+      <button class="chip ${pen&&pen.kind==='PP'?'sel':''}" data-a="pensheet" data-k="PP">Überzahl</button>
+      <button class="chip ${pen&&pen.kind==='BP'?'sel':''}" data-a="pensheet" data-k="BP">Unterzahl</button>
     </div>
-    ${pen?`<div class="pen">${STATES[pen.kind]} · ${pen.dur/60} min penalty · <b id="pen">${fmtc(pen.left)}</b> left${pen.player?' · '+(pen.kind==='PP'?'drawn by ':'penalty on ')+esc(short(nameOf(pen.player))):''}
-      <div style="margin-top:8px"><button class="ghost" data-a="penend">Penalty over</button></div></div>`:''}
-    <div class="lab">Goalie</div>
-    <div class="seg">${gks.map(p=>`<button class="chip ${L.goalie===p.id?'sel':''}" data-a="goalie" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')||'<span class="muted">No goalie in the roster</span>'}</div>
+    ${pen?`<div class="pen">${STATES[pen.kind]} · ${pen.dur/60} min Strafe · <b id="pen">${fmtc(pen.left)}</b> Rest${pen.player?' · '+(pen.kind==='PP'?'gezogen von ':'Strafe gegen ')+esc(short(nameOf(pen.player))):''}
+      <div style="margin-top:8px"><button class="ghost" data-a="penend">Strafe beendet</button></div></div>`:''}
+    <div class="lab">Torhüter</div>
+    <div class="seg">${gks.map(p=>`<button class="chip ${L.goalie===p.id?'sel':''}" data-a="goalie" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')||'<span class="muted">Kein Torhüter im Kader</span>'}</div>
   </section>
   <section class="card">
-    <h2>Goals</h2>
+    <h2>Tore</h2>
     ${shown.length?shown.map(e=>{
       const bits=e.type==='GF'
-        ?[e.seq&&SEQ[e.seq],e.scorer&&'G: '+short(nameOf(e.scorer)),e.assist&&e.assist!=='none'&&'A: '+short(nameOf(e.assist))]
+        ?[e.seq&&SEQ[e.seq],e.scorer&&'T: '+short(nameOf(e.scorer)),e.assist&&e.assist!=='none'&&'A: '+short(nameOf(e.assist))]
         :[e.seq&&SEQ[e.seq],'Goalie '+(e.goalie?short(nameOf(e.goalie)):'–')];
-      const who=bits.filter(Boolean).join(' · ')||'tap to add scorer, assist, sequence';
+      const who=bits.filter(Boolean).join(' · ')||'Tippen für Torschütze, Assist, Spielszene';
       return `<button class="ev" data-a="evedit" data-id="${e.id}">
         <span class="badge ${e.type}">${e.type}</span>
         <span><b>H${e.half} ${fmt(e.sec)}</b> · ${esc(blockName(e.block))} · ${STATES[e.state]}<small>${esc(who)}</small></span>
         <span class="after">${sa[e.id]}</span></button>`;}).join('')
-      :'<div class="muted">No goals yet.</div>'}
-    ${list.length>6?`<button class="ghost" style="margin-top:8px" data-a="showall">${S.ui.showAll?'Show fewer':'Show all ('+list.length+')'}</button>`:''}
+      :'<div class="muted">Noch keine Tore.</div>'}
+    ${list.length>6?`<button class="ghost" style="margin-top:8px" data-a="showall">${S.ui.showAll?'Weniger anzeigen':'Alle anzeigen ('+list.length+')'}</button>`:''}
   </section>`;
 }
 
@@ -467,62 +467,62 @@ function viewStats(){
     return `<tr><td>${esc(b.name)}</td><td>${s.gf}</td><td>${s.ga}</td><td>${pm(s.gf-s.ga)}</td><td>${fmt(s.toi)}</td><td>${per20(s.gf-s.ga,s.toi)}</td></tr>`}).join('');
   const playerRows=R().blocks.flatMap(b=>b.players.filter(p=>p.active||P[p.id]).map(p=>{
     const s=P[p.id]||{gf:0,ga:0,toi:0,g:0,a:0};
-    return `<tr><td>${esc(short(p.name))}${p.active?'':' <span class="muted">(removed)</span>'}</td><td>${esc(b.name.replace('Block ','B'))}</td><td>${pm(s.gf-s.ga)}</td><td>${s.gf}</td><td>${s.ga}</td><td>${fmt(s.toi)}</td><td>${s.g}</td><td>${s.a}</td></tr>`})).join('');
+    return `<tr><td>${esc(short(p.name))}${p.active?'':' <span class="muted">(entfernt)</span>'}</td><td>${esc(b.name.replace('Block ','B'))}</td><td>${pm(s.gf-s.ga)}</td><td>${s.gf}</td><td>${s.ga}</td><td>${fmt(s.toi)}</td><td>${s.g}</td><td>${s.a}</td></tr>`})).join('');
   const goalieRows=R().goalies.filter(p=>p.active||G[p.id]).map(p=>{const s=G[p.id]||{ga:0,toi:0};
     return `<tr><td>${esc(short(p.name))}</td><td>${s.ga}</td><td>${fmt(s.toi)}</td><td>${per20(s.ga,s.toi)}</td></tr>`}).join('');
-  const seqRows=[...Object.keys(SEQ),'?'].filter(k=>Q[k]).map(k=>`<tr><td>${k==='?'?'Not set':SEQ[k]}</td><td>${Q[k].gf}</td><td>${Q[k].ga}</td></tr>`).join('');
+  const seqRows=[...Object.keys(SEQ),'?'].filter(k=>Q[k]).map(k=>`<tr><td>${k==='?'?'Nicht gesetzt':SEQ[k]}</td><td>${Q[k].gf}</td><td>${Q[k].ga}</td></tr>`).join('');
   const penRows=Object.entries(pen).map(([id,s])=>`<tr><td>${esc(short(nameOf(id)))}</td><td>${s.taken}</td><td>${s.pim}</td><td>${s.drawn}</td></tr>`).join('');
   const nPP=g.pens.filter(x=>x.kind==='PP').length, nBP=g.pens.filter(x=>x.kind==='BP').length;
   return `
   <section class="card">
-    <h2>Filter by situation</h2>
-    <div class="seg">${[['ALL','All'],['EV','Even'],['PP','Power play'],['BP','Box play']].map(([id,l])=>
+    <h2>Nach Situation filtern</h2>
+    <div class="seg">${[['ALL','Alle'],['EV','Gleichstand'],['PP','Überzahl'],['BP','Unterzahl']].map(([id,l])=>
       `<button class="chip ${f===id?'sel':''}" data-a="sfilter" data-id="${id}">${l}</button>`).join('')}</div>
-    <div class="muted" style="margin-top:10px">Score ${sc.gf}–${sc.ga} · ${g.events.length} goals · ${nPP} power plays · ${nBP} box plays</div>
+    <div class="muted" style="margin-top:10px">Ergebnis ${sc.gf}–${sc.ga} · ${g.events.length} Tore · ${nPP} Überzahlen · ${nBP} Unterzahlen</div>
   </section>
-  <section class="card"><h2>Blocks</h2><div class="scroll"><table class="tbl">
-    <tr><th>Block</th><th>GF</th><th>GA</th><th>+/−</th><th>TOI</th><th>+/− per 20</th></tr>${blockRows}</table></div></section>
-  <section class="card"><h2>Players</h2><div class="scroll"><table class="tbl">
-    <tr><th>Player</th><th>Blk</th><th>+/−</th><th>GF</th><th>GA</th><th>TOI</th><th>G</th><th>A</th></tr>${playerRows}</table></div>
-    <div class="muted" style="margin-top:8px">GF/GA = goals while on the floor. G and A come from the goal prompt.</div></section>
-  <section class="card"><h2>How goals started</h2>${seqRows?`<div class="scroll"><table class="tbl">
-    <tr><th>Sequence</th><th>GF</th><th>GA</th></tr>${seqRows}</table></div>`:'<div class="muted">No goals yet.</div>'}</section>
-  <section class="card"><h2>Goalies</h2><div class="scroll"><table class="tbl">
-    <tr><th>Goalie</th><th>GA</th><th>TOI</th><th>GA per 20</th></tr>${goalieRows}</table></div></section>
-  ${penRows?`<section class="card"><h2>Penalties by player</h2><div class="scroll"><table class="tbl">
-    <tr><th>Player</th><th>Taken (BP)</th><th>PIM</th><th>Drawn (PP)</th></tr>${penRows}</table></div></section>`:''}
-  <div class="muted" style="padding:0 4px 12px">TOI counts only while the game clock runs.</div>`;
+  <section class="card"><h2>Blöcke</h2><div class="scroll"><table class="tbl">
+    <tr><th>Block</th><th>GF</th><th>GA</th><th>+/−</th><th>TOI</th><th>+/− pro 20</th></tr>${blockRows}</table></div></section>
+  <section class="card"><h2>Spieler</h2><div class="scroll"><table class="tbl">
+    <tr><th>Spieler</th><th>Blk</th><th>+/−</th><th>GF</th><th>GA</th><th>TOI</th><th>T</th><th>A</th></tr>${playerRows}</table></div>
+    <div class="muted" style="margin-top:8px">GF/GA = Tore auf dem Feld. T und A kommen aus der Toreingabe.</div></section>
+  <section class="card"><h2>Wie Tore entstanden</h2>${seqRows?`<div class="scroll"><table class="tbl">
+    <tr><th>Spielszene</th><th>GF</th><th>GA</th></tr>${seqRows}</table></div>`:'<div class="muted">Noch keine Tore.</div>'}</section>
+  <section class="card"><h2>Torhüter</h2><div class="scroll"><table class="tbl">
+    <tr><th>Torhüter</th><th>GA</th><th>TOI</th><th>GA pro 20</th></tr>${goalieRows}</table></div></section>
+  ${penRows?`<section class="card"><h2>Strafen nach Spieler</h2><div class="scroll"><table class="tbl">
+    <tr><th>Spieler</th><th>Erhalten (UZ)</th><th>Strafmin.</th><th>Gezogen (ÜZ)</th></tr>${penRows}</table></div></section>`:''}
+  <div class="muted" style="padding:0 4px 12px">TOI läuft nur, wenn die Spieluhr läuft.</div>`;
 }
 
 function viewSetup(){
   const g=S.game, rs=R();
   const prow=(p,isGk)=>`<div class="row">
-    <input type="text" data-c="pname" data-id="${p.id}" value="${esc(p.name)}" aria-label="Player name">
-    ${isGk?'':`<select data-c="pblock" data-id="${p.id}" aria-label="Block">${rs.blocks.map(b=>`<option value="${b.id}" ${findPlayer(p.id).b.id===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`}
-    <button class="ghost danger" data-a="rm" data-id="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button></div>`;
+    <input type="text" data-c="pname" data-id="${p.id}" value="${esc(p.name)}" aria-label="Spielername">
+    ${isGk?'':`<select data-c="pblock" data-id="${p.id}" aria-label="Block zuweisen">${rs.blocks.map(b=>`<option value="${b.id}" ${findPlayer(p.id).b.id===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select>`}
+    <button class="ghost danger" data-a="rm" data-id="${p.id}" aria-label="Entfernen ${esc(p.name)}">✕</button></div>`;
   return `
-  <section class="card"><h2>Game</h2>
-    <div class="row"><input type="text" data-c="opp" value="${esc(g.opponent)}" placeholder="Opponent name"></div>
-    <div class="lab">Length of one half (minutes)</div>
+  <section class="card"><h2>Spiel</h2>
+    <div class="row"><input type="text" data-c="opp" value="${esc(g.opponent)}" placeholder="Gegner"></div>
+    <div class="lab">Länge einer Halbzeit (Minuten)</div>
     <div class="stepper"><button data-a="step" data-k="halfMin" data-d="-1">−</button><b>${S.settings.halfMin}</b><button data-a="step" data-k="halfMin" data-d="1">+</button></div>
-    <div class="lab">Players on the floor per block (without goalie)</div>
+    <div class="lab">Feldspieler pro Block (ohne Torhüter)</div>
     <div class="stepper"><button data-a="step" data-k="onFloor" data-d="-1">−</button><b>${rs.onFloor}</b><button data-a="step" data-k="onFloor" data-d="1">+</button></div>
-    <div class="btns" style="margin-top:14px"><button class="ghost danger" data-a="newgame">New game</button></div>
+    <div class="btns" style="margin-top:14px"><button class="ghost danger" data-a="newgame">Neues Spiel</button></div>
   </section>
-  <section class="card"><h2>Goalies</h2>
+  <section class="card"><h2>Torhüter</h2>
     ${rs.goalies.filter(p=>p.active).map(p=>prow(p,true)).join('')}
-    <button class="ghost" data-a="addgoalie">+ Goalie</button></section>
+    <button class="ghost" data-a="addgoalie">+ Torhüter</button></section>
   ${rs.blocks.map(b=>`<section class="card"><h2>${esc(b.name)}</h2>
-    <div class="row"><input type="text" data-c="bname" data-id="${b.id}" value="${esc(b.name)}" aria-label="Block name"></div>
+    <div class="row"><input type="text" data-c="bname" data-id="${b.id}" value="${esc(b.name)}" aria-label="Blockname"></div>
     ${activePlayers(b).map(p=>prow(p,false)).join('')}
-    <button class="ghost" data-a="addplayer" data-id="${b.id}">+ Player</button></section>`).join('')}
-  <section class="card"><h2>Data (stays on this device)</h2>
+    <button class="ghost" data-a="addplayer" data-id="${b.id}">+ Spieler</button></section>`).join('')}
+  <section class="card"><h2>Daten (bleiben auf diesem Gerät)</h2>
     <div class="btns">
-      <button class="ghost" data-a="expcsv">Stats as CSV</button>
-      <button class="ghost" data-a="expjson">Backup (JSON)</button>
-      <button class="ghost" data-a="impjson">Restore backup</button>
-      <button class="ghost" data-a="demo">Demo data</button>
-      <button class="ghost danger" data-a="reset">Reset everything</button>
+      <button class="ghost" data-a="expcsv">Statistik als CSV</button>
+      <button class="ghost" data-a="expjson">Sicherung (JSON)</button>
+      <button class="ghost" data-a="impjson">Sicherung laden</button>
+      <button class="ghost" data-a="demo">Demodaten</button>
+      <button class="ghost danger" data-a="reset">Alles zurücksetzen</button>
     </div></section>`;
 }
 
@@ -534,49 +534,49 @@ function sheetEvent(){
   const name=id=>esc(short(nameOf(id)));
   const gk=R().goalies.filter(p=>p.active||p.id===e.goalie);
   const assistable=e.floor.filter(id=>id!==e.scorer);
-  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Goal details">
-    <h3>${gf?'Goal for':'Goal against'} · H${e.half} ${fmt(e.sec)}</h3>
-    <div class="muted">${esc(b.name)} · ${STATES[e.state]}${e.penBefore?' · '+e.penBefore.dur/60+' min penalty ended by this goal':''}</div>
-    ${gf?`<div class="lab">Who scored?</div>
-    <div class="chips">${e.floor.map(id=>`<button class="chip ${e.scorer===id?'sel':''}" data-a="evscorer" data-id="${id}">${name(id)}</button>`).join('')||'<span class="muted">Nobody marked on the floor</span>'}</div>
+  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Tordetails">
+    <h3>${gf?'Tor für uns':'Gegentor'} · H${e.half} ${fmt(e.sec)}</h3>
+    <div class="muted">${esc(b.name)} · ${STATES[e.state]}${e.penBefore?' · '+e.penBefore.dur/60+' min Strafe durch dieses Tor beendet':''}</div>
+    ${gf?`<div class="lab">Wer hat getroffen?</div>
+    <div class="chips">${e.floor.map(id=>`<button class="chip ${e.scorer===id?'sel':''}" data-a="evscorer" data-id="${id}">${name(id)}</button>`).join('')||'<span class="muted">Niemand auf dem Feld markiert</span>'}</div>
     <div class="lab">Assist</div>
     <div class="chips">${assistable.map(id=>`<button class="chip ${e.assist===id?'sel':''}" data-a="evassist" data-id="${id}">${name(id)}</button>`).join('')}
-      <button class="chip ${e.assist==='none'?'sel':''}" data-a="evassist" data-id="none">No assist</button></div>`:''}
-    <div class="lab">How did it start?</div>
+      <button class="chip ${e.assist==='none'?'sel':''}" data-a="evassist" data-id="none">Kein Assist</button></div>`:''}
+    <div class="lab">Wie entstand das Tor?</div>
     <div class="chips">${Object.entries(SEQ).map(([k,v])=>`<button class="chip ${e.seq===k?'sel':''}" data-a="evseq" data-id="${k}">${v}</button>`).join('')}</div>
-    <details><summary>Correct details</summary>
-      <div class="lab">Type</div>
-      <div class="seg">${[['GF','Goal for'],['GA','Goal against']].map(([k,l])=>`<label class="chip ${e.type===k?'sel':''}"><input type="radio" name="evtype" hidden data-c="ev.type" value="${k}" ${e.type===k?'checked':''}>${l}</label>`).join('')}</div>
+    <details><summary>Details korrigieren</summary>
+      <div class="lab">Typ</div>
+      <div class="seg">${[['GF','Tor für uns'],['GA','Gegentor']].map(([k,l])=>`<label class="chip ${e.type===k?'sel':''}"><input type="radio" name="evtype" hidden data-c="ev.type" value="${k}" ${e.type===k?'checked':''}>${l}</label>`).join('')}</div>
       <div class="grid2">
-        <div><div class="lab">Half</div><select class="field" data-c="ev.half"><option value="1" ${e.half===1?'selected':''}>1st half</option><option value="2" ${e.half===2?'selected':''}>2nd half</option></select></div>
-        <div><div class="lab">Clock (m:ss)</div><input class="field" type="text" inputmode="numeric" data-c="ev.time" value="${fmt(e.sec)}"></div>
+        <div><div class="lab">Halbzeit</div><select class="field" data-c="ev.half"><option value="1" ${e.half===1?'selected':''}>1. Halbzeit</option><option value="2" ${e.half===2?'selected':''}>2. Halbzeit</option></select></div>
+        <div><div class="lab">Uhrzeit (m:ss)</div><input class="field" type="text" inputmode="numeric" data-c="ev.time" value="${fmt(e.sec)}"></div>
         <div><div class="lab">Block</div><select class="field" data-c="ev.block">${R().blocks.map(x=>`<option value="${x.id}" ${x.id===e.block?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
         <div><div class="lab">Situation</div><select class="field" data-c="ev.state">${Object.entries(STATES).map(([k,v])=>`<option value="${k}" ${e.state===k?'selected':''}>${v}</option>`).join('')}</select></div>
       </div>
-      <div class="lab">Goalie in net</div>
+      <div class="lab">Torhüter im Tor</div>
       <select class="field" data-c="ev.goalie"><option value="">–</option>${gk.map(p=>`<option value="${p.id}" ${e.goalie===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
-      <div class="lab">On the floor</div>
+      <div class="lab">Auf dem Feld</div>
       <div class="chips">${b.players.filter(p=>p.active||e.floor.includes(p.id)).map(p=>`<button class="chip ${e.floor.includes(p.id)?'on':'off'}" data-a="evfloor" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')}</div>
     </details>
-    <div class="btns" style="margin-top:16px"><button class="primary" data-a="closesheet">Done</button><button class="ghost danger" data-a="evdel">${sheet.fresh?'Undo goal':'Delete goal'}</button></div>
+    <div class="btns" style="margin-top:16px"><button class="primary" data-a="closesheet">Fertig</button><button class="ghost danger" data-a="evdel">${sheet.fresh?'Tor rückgängig':'Tor löschen'}</button></div>
   </div>`;
 }
 function sheetPen(){
   const pp=sheet.kind==='PP';
-  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Penalty">
-    <h3>${pp?'Power play':'Box play'}</h3>
-    <div class="lab">Penalty length</div>
+  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Strafe">
+    <h3>${pp?'Überzahl':'Unterzahl'}</h3>
+    <div class="lab">Strafzeit</div>
     <div class="seg">${[[120,'2 min'],[300,'5 min']].map(([v,l])=>`<button class="chip ${sheet.dur===v?'sel':''}" data-a="pendur" data-v="${v}">${l}</button>`).join('')}</div>
-    <div class="lab">${pp?'Drawn by (optional)':'Penalty on (optional)'}</div>
+    <div class="lab">${pp?'Gezogen von (optional)':'Strafe gegen (optional)'}</div>
     <div class="chips">${allActive().map(p=>`<button class="chip ${sheet.player===p.id?'sel':''}" data-a="penplayer" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')}</div>
-    <div class="btns" style="margin-top:16px"><button class="primary" data-a="penstart">Start ${pp?'power play':'box play'}</button><button class="ghost" data-a="closesheet">Cancel</button></div>
+    <div class="btns" style="margin-top:16px"><button class="primary" data-a="penstart">${pp?'Überzahl starten':'Unterzahl starten'}</button><button class="ghost" data-a="closesheet">Abbrechen</button></div>
   </div>`;
 }
 function sheetClock(){
-  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Correct the clock">
-    <h3>Correct the clock</h3><div class="muted">Set it to the time shown in the hall (m:ss).</div>
+  return `<div class="scrim" data-a="closesheet"></div><div class="sheet" role="dialog" aria-label="Uhr korrigieren">
+    <h3>Uhr korrigieren</h3><div class="muted">Auf die in der Halle angezeigte Zeit setzen (m:ss).</div>
     <input class="field" id="clkin" type="text" inputmode="numeric" value="${fmt(S.game.clock.sec)}" style="margin-top:12px">
-    <div class="btns" style="margin-top:16px"><button class="primary" data-a="clockset">Set</button><button class="ghost" data-a="closesheet">Cancel</button></div>
+    <div class="btns" style="margin-top:16px"><button class="primary" data-a="clockset">Setzen</button><button class="ghost" data-a="closesheet">Abbrechen</button></div>
   </div>`;
 }
 function sheetHtml(){return sheet.type==='event'?sheetEvent():sheet.type==='pen'?sheetPen():sheetClock();}
@@ -586,8 +586,8 @@ function render(){
   document.body.dataset.tab=tab;
   $('#view').innerHTML=tab==='game'?viewGame():tab==='stats'?viewStats():viewSetup();
   $('#goalbar').innerHTML=tab==='game'?`<div class="goalbar"><div class="in">
-    <button class="goal gf" data-a="goal" data-t="GF">GOAL FOR</button>
-    <button class="goal ga" data-a="goal" data-t="GA">GOAL AGAINST</button></div></div>`:'';
+    <button class="goal gf" data-a="goal" data-t="GF">TOR</button>
+    <button class="goal ga" data-a="goal" data-t="GA">GEGENTOR</button></div></div>`:'';
   document.querySelectorAll('#tabs button').forEach(b=>{b.classList.toggle('sel',b.dataset.id===tab); b.setAttribute('aria-current',b.dataset.id===tab?'page':'false')});
   $('#sheet').innerHTML=sheet?sheetHtml():'';
   $('#gamelabel').textContent=gameLabel();
