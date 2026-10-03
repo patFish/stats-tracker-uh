@@ -329,7 +329,7 @@ function act(a,d){
         S.game=newGame(R(),S.game.opponent); S.ui.tab='game'; sheet=null; } break;
     case 'demo': if(confirm('Replace the current game with demo data?')){S.game=demoGame(); S.ui.tab='stats';} break;
     case 'expjson': download('shift-tracker-backup.json',JSON.stringify(S,null,2),'application/json'); return;
-    case 'expcsv': download('goals.csv',toCsv(),'text/csv'); return;
+    case 'expcsv': download(`shift-stats-${(S.game.opponent||'game').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toCsv(),'text/csv'); return;
     case 'impjson': $('#file').click(); return;
     case 'reset': if(confirm('Delete ALL data including the roster and restore the defaults?')){S=defaultState(); sheet=null;} break;
   }
@@ -518,7 +518,7 @@ function viewSetup(){
     <button class="ghost" data-a="addplayer" data-id="${b.id}">+ Player</button></section>`).join('')}
   <section class="card"><h2>Data (stays on this device)</h2>
     <div class="btns">
-      <button class="ghost" data-a="expcsv">Goals as CSV</button>
+      <button class="ghost" data-a="expcsv">Stats as CSV</button>
       <button class="ghost" data-a="expjson">Backup (JSON)</button>
       <button class="ghost" data-a="impjson">Restore backup</button>
       <button class="ghost" data-a="demo">Demo data</button>
@@ -601,10 +601,26 @@ function download(name,text,type){
 }
 function toCsv(){
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
-  const head=['half','clock','type','block','situation','sequence','goalie','on_floor','scorer','assist'];
-  const rows=S.game.events.map(e=>[e.half,fmt(e.sec),e.type,blockName(e.block),STATES[e.state],e.seq?SEQ[e.seq]:'',e.goalie?nameOf(e.goalie):'',
-    e.floor.map(nameOf).join('; '),e.scorer?nameOf(e.scorer):'',e.assist&&e.assist!=='none'?nameOf(e.assist):''].map(q).join(','));
-  return [head.join(','),...rows].join('\n');
+  const head=['name','block','toi_ev','toi_pp','toi_bp','toi_total','gf_on_ice','ga_on_ice','goals_scored','assists'];
+  const rows=[];
+  for(const blk of S.roster.blocks){
+    for(const p of blk.players){
+      const t=S.game.toi.p[p.id]??{EV:0,PP:0,BP:0};
+      const tot=t.EV+t.PP+t.BP;
+      const gf=S.game.events.filter(e=>e.type==='GF'&&e.floor.includes(p.id)).length;
+      const ga=S.game.events.filter(e=>e.type==='GA'&&e.floor.includes(p.id)).length;
+      const goals=S.game.events.filter(e=>e.type==='GF'&&e.scorer===p.id).length;
+      const ast=S.game.events.filter(e=>e.type==='GF'&&e.assist===p.id).length;
+      rows.push([p.name,blk.name,fmt(t.EV),fmt(t.PP),fmt(t.BP),fmt(tot),gf,ga,goals,ast].map(q).join(','));
+    }
+  }
+  for(const g of S.roster.goalies){
+    const t=S.game.toi.g[g.id]??{EV:0,PP:0,BP:0};
+    const tot=t.EV+t.PP+t.BP;
+    const ga=S.game.events.filter(e=>e.type==='GA'&&e.goalie===g.id).length;
+    rows.push([g.name,'Goalie',fmt(t.EV),fmt(t.PP),fmt(t.BP),fmt(tot),'',ga,'',''].map(q).join(','));
+  }
+  return [head.map(q).join(','),...rows].join('\n');
 }
 function demoGame(){
   const g=newGame(R(),'Demo opponent'); g.phase='end'; g.clock.sec=len(); const gk=R().goalies.filter(p=>p.active);
