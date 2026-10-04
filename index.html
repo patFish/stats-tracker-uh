@@ -12,7 +12,7 @@
   --bg:#f4f6f9; --surface:#ffffff; --text:#111827; --muted:#667085; --line:#e4e7ec;
   --accent:#2457d6; --accent-text:#ffffff; --chip:#eef1f6;
   --good:#12703a; --good-bg:#dcf5e5; --bad:#b42318; --bad-bg:#fde4e1; --warn:#9a5b00; --warn-bg:#fff0d6;
-  --r:14px; --tab-h:60px; --goal-h:88px;
+  --r:14px; --goal-h:88px;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -27,16 +27,16 @@ html,body{margin:0;background:var(--bg);color:var(--text);
 button,select,input{font:inherit;color:inherit}
 button{touch-action:manipulation;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
-.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;
   padding:8px 16px;padding-top:calc(8px + env(safe-area-inset-top))}
-.top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .top .ttl{min-width:0;display:flex;flex-direction:column}
 .top .ttl b{font-size:16px}
 .top .ttl span{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hs{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hs small{font-size:12px;color:var(--muted);font-weight:500;margin:0 6px}
-main{max-width:560px;margin:auto;padding:12px 12px calc(var(--tab-h) + 24px + env(safe-area-inset-bottom))}
-body[data-tab=game] main{padding-bottom:calc(var(--tab-h) + var(--goal-h) + 24px + env(safe-area-inset-bottom))}
+main{max-width:560px;margin:auto;padding:12px 12px calc(24px + env(safe-area-inset-bottom))}
+body[data-tab=game] main{padding-bottom:calc(var(--goal-h) + 24px + env(safe-area-inset-bottom))}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
 h2{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
 .muted{color:var(--muted);font-size:14px}
@@ -74,15 +74,14 @@ span.chip{cursor:default}
 .badge{min-width:38px;text-align:center;border-radius:8px;padding:4px 6px;font-weight:700;font-size:13px}
 .badge.GF{background:var(--good-bg);color:var(--good)}.badge.GA{background:var(--bad-bg);color:var(--bad)}
 .after{font-variant-numeric:tabular-nums;color:var(--muted)}
-.goalbar{position:fixed;left:0;right:0;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom));z-index:6;background:var(--bg);
+.goalbar{position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom);z-index:6;background:var(--bg);
   border-top:1px solid var(--line);padding:10px 12px}
 .goalbar .in{max-width:560px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .goal{min-height:66px;border-radius:14px;border:2px solid;font-weight:700;font-size:17px}
 .goal.gf{background:var(--good-bg);border-color:var(--good);color:var(--good)}
 .goal.ga{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;height:calc(var(--tab-h) + env(safe-area-inset-bottom));
-  padding-bottom:env(safe-area-inset-bottom);background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
-.tabs button{border:0;background:transparent;color:var(--muted);font-weight:600}
+.tabs{display:flex;border-top:1px solid var(--line)}
+.tabs button{flex:1;min-height:40px;border:0;background:transparent;color:var(--muted);font-weight:600}
 .tabs button.sel{color:var(--accent)}
 .scroll{overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
@@ -107,20 +106,41 @@ span.chip{cursor:default}
 .sheet summary{cursor:pointer;color:var(--muted);min-height:36px;display:flex;align-items:center}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheet .chips{margin-top:0}
+@media(min-width:900px){
+  .top .in,main,.goalbar .in{max-width:1120px}
+  body[data-tab=game] main{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  body[data-tab=game] main section:nth-child(odd){grid-column:1}
+  body[data-tab=game] main section:nth-child(even){grid-column:2}
+  body[data-tab=stats] main{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  body[data-tab=stats] main section:nth-child(1){grid-column:1/-1}
+  body[data-tab=stats] main section:nth-child(2){grid-column:1}
+  body[data-tab=stats] main section:nth-child(3){grid-column:2}
+  body[data-tab=stats] main section:nth-child(4){grid-column:1}
+  body[data-tab=stats] main section:nth-child(5){grid-column:2}
+  body[data-tab=stats] main section:nth-child(6){grid-column:1}
+  body[data-tab=stats] main>.muted:last-child{grid-column:1/-1}
+  body[data-tab=setup] main{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  body[data-tab=setup] main section:nth-child(1){grid-column:1}
+  body[data-tab=setup] main section:nth-child(2){grid-column:1}
+  body[data-tab=setup] main section:nth-child(3){grid-column:2}
+  body[data-tab=setup] main section:nth-child(4){grid-column:2}
+  body[data-tab=setup] main section:nth-child(5){grid-column:2}
+  body[data-tab=setup] main section:nth-child(6){grid-column:1}
+}
 </style>
 </head>
 <body data-tab="game">
 <header class="top"><div class="in">
   <div class="ttl"><b>Shift Tracker</b><span id="gamelabel"></span></div>
   <div class="hs" id="hscore" aria-label="Ergebnis"></div>
-</div></header>
-<main id="view"></main>
-<div id="goalbar"></div>
+</div>
 <nav class="tabs" id="tabs" aria-label="Bereiche">
   <button data-a="tab" data-id="game">Spiel</button>
   <button data-a="tab" data-id="stats">Statistik</button>
   <button data-a="tab" data-id="setup">Einstellungen</button>
-</nav>
+</nav></header>
+<main id="view"></main>
+<div id="goalbar"></div>
 <div id="sheet"></div>
 <input type="file" id="file" accept="application/json,.json" hidden data-c="impfile">
 
@@ -330,6 +350,7 @@ function act(a,d){
     case 'demo': if(confirm('Aktuelles Spiel durch Demodaten ersetzen?')){S.game=demoGame(); S.ui.tab='stats';} break;
     case 'expjson': download('shift-tracker-backup.json',JSON.stringify(S,null,2),'application/json'); return;
     case 'expcsv': download(`shift-stats-${(S.game.opponent||'game').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toCsv(),'text/csv'); return;
+    case 'expevents': download(`shift-verlauf-${(S.game.opponent||'spiel').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toEventsCsv(),'text/csv'); return;
     case 'impjson': $('#file').click(); return;
     case 'reset': if(confirm('Alle Daten einschließlich des Kaders löschen und Standardwerte wiederherstellen?')){S=defaultState(); sheet=null;} break;
   }
@@ -519,6 +540,7 @@ function viewSetup(){
   <section class="card"><h2>Daten (bleiben auf diesem Gerät)</h2>
     <div class="btns">
       <button class="ghost" data-a="expcsv">Statistik als CSV</button>
+      <button class="ghost" data-a="expevents">Verlauf als CSV</button>
       <button class="ghost" data-a="expjson">Sicherung (JSON)</button>
       <button class="ghost" data-a="impjson">Sicherung laden</button>
       <button class="ghost" data-a="demo">Demodaten</button>
@@ -620,6 +642,16 @@ function toCsv(){
     const ga=S.game.events.filter(e=>e.type==='GA'&&e.goalie===g.id).length;
     rows.push([g.name,'Goalie',fmt(t.EV),fmt(t.PP),fmt(t.BP),fmt(tot),'',ga,'',''].map(q).join(','));
   }
+  return [head.map(q).join(','),...rows].join('\n');
+}
+function toEventsCsv(){
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const head=['halbzeit','zeit','typ','block','situation','spielszene','torhueter','auf_dem_feld','torschuetze','assist'];
+  const rows=S.game.events.slice().sort((a,b)=>a.half-b.half||a.sec-b.sec).map(e=>[
+    e.half,fmt(e.sec),e.type,blockName(e.block),STATES[e.state],e.seq?SEQ[e.seq]:'',
+    e.goalie?nameOf(e.goalie):'',e.floor.map(nameOf).join('; '),
+    e.scorer?nameOf(e.scorer):'',e.assist&&e.assist!=='none'?nameOf(e.assist):''
+  ].map(q).join(','));
   return [head.map(q).join(','),...rows].join('\n');
 }
 function demoGame(){
