@@ -160,7 +160,7 @@ span.chip{cursor:default}
                 pen: null | {kind:'PP'|'BP', dur, left, player} },   // situation = pen ? pen.kind : 'EV'
        toi:   { b:{[blockId]:{EV,PP,BP}}, p:{[playerId]:{...}}, g:{[goalieId]:{...}} },   // seconds of running clock
        events:[{ id, type:'GF'|'GA', half, sec, block, floor:[playerId], goalie, state,
-                 seq:'PP'|'BP'|'FO'|'TO'|'FH'|'OT'|null, scorer, assist:(playerId|'none'|null), penBefore? }]
+                 seq:'PP'|'BP'|'FO'|'TO'|'TR'|'FH'|'OT'|null, scorer, assist:(playerId|'none'|null), penBefore? }]
      },
      ui: { tab, sfilter }
    }
@@ -169,7 +169,7 @@ span.chip{cursor:default}
    ===================================================================== */
 const KEY='shifttracker.v3';
 const STATES={EV:'Gleichstand',PP:'Überzahl',BP:'Unterzahl'};
-const SEQ={PP:'PP',BP:'BP',FO:'Bully',TO:'Ballgewinn',FH:'Freischlag',OT:'Sonstiges'};
+const SEQ={PP:'PP',BP:'BP',FO:'Bully',TO:'Ballgewinn',TR:'Wechsel',FH:'Freischlag',OT:'Sonstiges'};
 const PAUSE_LABELS={tou:'Auszeit wir',tot:'Auszeit sie',ref:'Schiedsrichter',inj:'Verletzung',oth:'Sonstiges'};
 const mem={};
 const store={
