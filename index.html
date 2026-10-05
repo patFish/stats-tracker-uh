@@ -27,7 +27,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);
 button,select,input{font:inherit;color:inherit}
 button{touch-action:manipulation;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
-.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
 .top .in{max-width:560px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;
   padding:8px 16px;padding-top:calc(8px + env(safe-area-inset-top))}
 .top .ttl{min-width:0;display:flex;flex-direction:column}
@@ -80,7 +80,7 @@ span.chip{cursor:default}
 .goal{min-height:66px;border-radius:14px;border:2px solid;font-weight:700;font-size:17px}
 .goal.gf{background:var(--good-bg);border-color:var(--good);color:var(--good)}
 .goal.ga{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
-.tabs{display:flex;border-top:1px solid var(--line)}
+.tabs{display:flex;border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{flex:1;min-height:40px;border:0;background:transparent;color:var(--muted);font-weight:600}
 .tabs button.sel{color:var(--accent)}
 .scroll{overflow-x:auto}
@@ -129,12 +129,7 @@ span.chip{cursor:default}
 <header class="top"><div class="in">
   <div class="ttl"><b>Shift Tracker</b><span id="gamelabel"></span></div>
   <div class="hs" id="hscore" aria-label="Ergebnis"></div>
-</div>
-<nav class="tabs" id="tabs" aria-label="Bereiche">
-  <button data-a="tab" data-id="game">Spiel</button>
-  <button data-a="tab" data-id="stats">Statistik</button>
-  <button data-a="tab" data-id="setup">Einstellungen</button>
-</nav></header>
+</div></header>
 <main id="view"></main>
 <div id="goalbar"></div>
 <div id="sheet"></div>
@@ -198,7 +193,7 @@ function newGame(roster,opp){
   const gk=roster.goalies.find(x=>x.active);
   return {id:uid(),opponent:opp||'',created:new Date().toISOString(),phase:'pre',
     clock:{sec:0,run:false,last:0,label:''},stops:[],pens:[],
-    live:{block:roster.blocks[0].id,resting:{},goalie:gk?gk.id:null,pen:null,shiftStart:0},
+    live:{block:roster.blocks[0].id,resting:{},goalie:gk?gk.id:null,pen:null,shiftStart:0,equalToi:{}},
     toi:{b:{},p:{},g:{}},events:[],shifts:[]};
 }
 function load(){
@@ -248,7 +243,10 @@ const sit=g=>g.live.pen?g.live.pen.kind:'EV';
 function bump(o,k,st,dt){(o[k]??={EV:0,PP:0,BP:0})[st]+=dt}
 function book(g,st,dt){
   const L=g.live; bump(g.toi.b,L.block,st,dt);
-  floorOf(g,L.block).forEach(p=>bump(g.toi.p,p.id,st,dt));
+  const players=(L.equalToi??{})[L.block]
+    ?activePlayers(R().blocks.find(b=>b.id===L.block))
+    :floorOf(g,L.block);
+  players.forEach(p=>bump(g.toi.p,p.id,st,dt));
   if(L.goalie) bump(g.toi.g,L.goalie,st,dt);
 }
 function addToi(g,dt){
@@ -308,8 +306,9 @@ function act(a,d){
   switch(a){
     case 'tab': S.ui.tab=d.id; sheet=null; break;
     case 'block': settle(g); logShift(g); L.block=d.id; break;
-    case 'swap': settle(g); logShift(g); swapOut(g,L.block,d.id); break;
-    case 'goalie': settle(g); L.goalie=d.id; break;
+    case 'swap': settle(g); logShift(g); if(d.bid&&d.bid!==L.block) L.block=d.bid; swapOut(g,L.block,d.id); break;
+    case 'goalie': settle(g); L.goalie=d.id||null; break;
+    case 'equaltoi': settle(g); (L.equalToi??={})[d.id]=!(L.equalToi??{})[d.id]; break;
     case 'phase': phaseAction(d.n); return;
     case 'goal': goal(d.t); return;
     case 'pause': settle(g); if(C.run){C.run=false;C.label='';g.stops.push({id:uid(),half:currentHalf(g),sec:Math.round(C.sec),label:'',ts:Date.now()});} break;
@@ -437,23 +436,35 @@ function viewClock(g){
 
 function viewGame(){
   const g=S.game, L=g.live;
-  const cb=R().blocks.find(b=>b.id===L.block), act_=activePlayers(cb), rest=restingOf(g,cb.id);
   const gks=R().goalies.filter(p=>p.active);
   const sa={}; let gf=0,ga=0; g.events.forEach(e=>{e.type==='GF'?gf++:ga++; sa[e.id]=gf+'–'+ga;});
   const list=g.events.slice().reverse(), shown=S.ui.showAll?list:list.slice(0,6);
-  const canRest=act_.length>R().onFloor, pen=L.pen;
+  const pen=L.pen;
+  const blockSections=R().blocks.map(b=>{
+    const act_=activePlayers(b), rest=restingOf(g,b.id);
+    const canRest=act_.length>R().onFloor, eq=(L.equalToi??{})[b.id], isActive=b.id===L.block;
+    const chips=act_.map(p=>{const r=rest.includes(p.id);
+      return eq
+        ?`<span class="chip on">${esc(short(p.name))}<small>Feld</small></span>`
+        :canRest
+          ?`<button class="chip ${r?'off':'on'}" data-a="swap" data-bid="${b.id}" data-id="${p.id}">${esc(short(p.name))}<small>${r?'Bank':'Feld'}</small></button>`
+          :`<span class="chip on">${esc(short(p.name))}<small>Feld</small></span>`;}).join('');
+    return `<div style="margin-bottom:${isActive?'12':'8'}px;padding:${isActive?'10':'8'}px;border-radius:10px;border:2px solid ${isActive?'var(--accent)':'var(--line)'};background:${isActive?'var(--surface)':'var(--chip)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b>${esc(b.name)}</b>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${canRest?`<button class="chip ${eq?'sel':''}" style="min-height:32px;font-size:12px;padding:2px 10px" data-a="equaltoi" data-id="${b.id}">≡ Alle</button>`:''}
+          ${!isActive?`<button class="ghost" style="min-height:32px;font-size:12px;padding:2px 10px" data-a="block" data-id="${b.id}">Aktiv</button>`:'<span class="pill" style="font-size:12px">Aktiv</span>'}
+        </div>
+      </div>
+      <div class="chips" style="margin-top:0">${chips}</div>
+      ${canRest&&!eq?`<div class="muted" style="margin-top:6px;font-size:12px">Antippen zum Wechsel</div>`:''}
+      ${eq?`<div class="muted" style="margin-top:6px;font-size:12px">Alle rotieren gleichmäßig</div>`:''}
+    </div>`;}).join('');
   return viewClock(g)+`
   <section class="card">
     <h2>Auf dem Feld</h2>
-    <div class="blocks">${R().blocks.map(b=>`
-      <button class="blk ${b.id===L.block?'sel':''}" data-a="block" data-id="${b.id}" aria-pressed="${b.id===L.block}">
-        <b>${esc(b.name)}</b><small>${esc(activePlayers(b).map(p=>first(p.name)).join(', '))}</small>
-      </button>`).join('')}</div>
-    <div class="chips">${act_.map(p=>{const r=rest.includes(p.id);
-      return canRest
-        ? `<button class="chip ${r?'off':'on'}" data-a="swap" data-id="${p.id}">${esc(short(p.name))}<small>${r?'Bank':'Feld'}</small></button>`
-        : `<span class="chip on">${esc(short(p.name))}<small>Feld</small></span>`;}).join('')}</div>
-    ${canRest?'<div class="muted" style="margin-top:8px">Spieler antippen zum Wechsel. Der wartende Spieler kommt rein.</div>':''}
+    ${blockSections}
   </section>
   <section class="card">
     <h2>Situation</h2>
@@ -465,7 +476,10 @@ function viewGame(){
     ${pen?`<div class="pen">${STATES[pen.kind]} · ${pen.dur/60} min Strafe · <b id="pen">${fmtc(pen.left)}</b> Rest${pen.player?' · '+(pen.kind==='PP'?'gezogen von ':'Strafe gegen ')+esc(short(nameOf(pen.player))):''}
       <div style="margin-top:8px"><button class="ghost" data-a="penend">Strafe beendet</button></div></div>`:''}
     <div class="lab">Torhüter</div>
-    <div class="seg">${gks.map(p=>`<button class="chip ${L.goalie===p.id?'sel':''}" data-a="goalie" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')||'<span class="muted">Kein Torhüter im Kader</span>'}</div>
+    <div class="seg">
+      <button class="chip ${L.goalie===null?'sel':''}" data-a="goalie" data-id="">Ohne TW</button>
+      ${gks.map(p=>`<button class="chip ${L.goalie===p.id?'sel':''}" data-a="goalie" data-id="${p.id}">${esc(short(p.name))}</button>`).join('')||'<span class="muted">Kein Torhüter im Kader</span>'}
+    </div>
   </section>
   <section class="card">
     <h2>Tore</h2>
@@ -613,10 +627,15 @@ function sheetClock(){
 }
 function sheetHtml(){return sheet.type==='event'?sheetEvent():sheet.type==='pen'?sheetPen():sheetClock();}
 
+const tabsNav=`<nav class="tabs" id="tabs" aria-label="Bereiche">
+  <button data-a="tab" data-id="game">Spiel</button>
+  <button data-a="tab" data-id="stats">Statistik</button>
+  <button data-a="tab" data-id="setup">Einstellungen</button>
+</nav>`;
 function render(){
   const tab=S.ui.tab, sc=score(S.game);
   document.body.dataset.tab=tab;
-  $('#view').innerHTML=tab==='game'?viewGame():tab==='stats'?viewStats():viewSetup();
+  $('#view').innerHTML=(tab==='game'?viewGame():tab==='stats'?viewStats():viewSetup())+tabsNav;
   $('#goalbar').innerHTML=tab==='game'?`<div class="goalbar"><div class="in">
     <button class="goal gf" data-a="goal" data-t="GF">TOR</button>
     <button class="goal ga" data-a="goal" data-t="GA">GEGENTOR</button></div></div>`:'';
