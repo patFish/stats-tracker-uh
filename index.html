@@ -198,8 +198,8 @@ function newGame(roster,opp){
   const gk=roster.goalies.find(x=>x.active);
   return {id:uid(),opponent:opp||'',created:new Date().toISOString(),phase:'pre',
     clock:{sec:0,run:false,last:0,label:''},stops:[],pens:[],
-    live:{block:roster.blocks[0].id,resting:{},goalie:gk?gk.id:null,pen:null},
-    toi:{b:{},p:{},g:{}},events:[]};
+    live:{block:roster.blocks[0].id,resting:{},goalie:gk?gk.id:null,pen:null,shiftStart:0},
+    toi:{b:{},p:{},g:{}},events:[],shifts:[]};
 }
 function load(){
   try{const raw=store.get(); if(raw){const s=JSON.parse(raw); if(s&&s.v===3&&s.roster&&s.game) return s;}}catch(e){}
@@ -260,6 +260,14 @@ function addToi(g,dt){
   }
   if(rem>0) book(g,'EV',rem);
 }
+function logShift(g){
+  if(!inHalf(g)) return;
+  const L=g.live, C=g.clock;
+  const start=L.shiftStart??0, end=Math.round(C.sec);
+  if(end<=start) return;
+  (g.shifts=g.shifts||[]).push({id:uid(),block:L.block,players:floorOf(g,L.block).map(p=>p.id),half:currentHalf(g),start,end});
+  L.shiftStart=end;
+}
 function settle(g){                    // book the time since the last change to the current set-up
   const C=g.clock; if(!C.run) return;
   const now=Date.now(); let dt=(now-C.last)/1000; C.last=now;
@@ -269,10 +277,10 @@ function settle(g){                    // book the time since the last change to
 }
 function phaseAction(n){
   const g=S.game, C=g.clock; settle(g);
-  if(n==='start'){g.phase='h1';C.sec=0;C.run=true;C.last=Date.now();C.label='';}
-  else if(n==='endh1'){g.phase='break';C.run=false;C.sec=0;C.label='';}
-  else if(n==='starth2'){g.phase='h2';C.sec=0;C.run=true;C.last=Date.now();C.label='';}
-  else if(n==='endgame'){g.phase='end';C.run=false;C.label='';}
+  if(n==='start'){g.phase='h1';C.sec=0;C.run=true;C.last=Date.now();C.label='';g.live.shiftStart=0;}
+  else if(n==='endh1'){logShift(g);g.phase='break';C.run=false;C.sec=0;C.label='';}
+  else if(n==='starth2'){g.phase='h2';C.sec=0;C.run=true;C.last=Date.now();C.label='';g.live.shiftStart=0;}
+  else if(n==='endgame'){logShift(g);g.phase='end';C.run=false;C.label='';}
   else if(n==='reopen'){g.phase='h2';C.run=false;C.label='';}
   save();render();
 }
@@ -299,8 +307,8 @@ function act(a,d){
   const g=S.game, C=g.clock, L=g.live;
   switch(a){
     case 'tab': S.ui.tab=d.id; sheet=null; break;
-    case 'block': settle(g); L.block=d.id; break;
-    case 'swap': settle(g); swapOut(g,L.block,d.id); break;
+    case 'block': settle(g); logShift(g); L.block=d.id; break;
+    case 'swap': settle(g); logShift(g); swapOut(g,L.block,d.id); break;
     case 'goalie': settle(g); L.goalie=d.id; break;
     case 'phase': phaseAction(d.n); return;
     case 'goal': goal(d.t); return;
@@ -347,6 +355,7 @@ function act(a,d){
     case 'expjson': download('shift-tracker-backup.json',JSON.stringify(S,null,2),'application/json'); return;
     case 'expcsv': download(`shift-stats-${(S.game.opponent||'game').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toCsv(),'text/csv'); return;
     case 'expevents': download(`shift-verlauf-${(S.game.opponent||'spiel').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toEventsCsv(),'text/csv'); return;
+    case 'expshifts': download(`shift-wechsel-${(S.game.opponent||'spiel').replace(/[^a-z0-9]/gi,'-')}-${S.game.created.slice(0,10)}.csv`,toShiftsCsv(),'text/csv'); return;
     case 'impjson': $('#file').click(); return;
     case 'reset': if(confirm('Alle Daten einschließlich des Kaders löschen und Standardwerte wiederherstellen?')){S=defaultState(); sheet=null;} break;
   }
@@ -541,6 +550,7 @@ function viewSetup(){
     <div class="btns">
       <button class="ghost" data-a="expcsv">Statistik als CSV</button>
       <button class="ghost" data-a="expevents">Verlauf als CSV</button>
+      <button class="ghost" data-a="expshifts">Wechsel als CSV</button>
       <button class="ghost" data-a="expjson">Sicherung (JSON)</button>
       <button class="ghost" data-a="impjson">Sicherung laden</button>
       <button class="ghost" data-a="demo">Demodaten</button>
@@ -642,6 +652,14 @@ function toCsv(){
     const ga=S.game.events.filter(e=>e.type==='GA'&&e.goalie===g.id).length;
     rows.push([g.name,'Goalie',fmt(t.EV),fmt(t.PP),fmt(t.BP),fmt(tot),'',ga,'',''].map(q).join(','));
   }
+  return [head.map(q).join(','),...rows].join('\n');
+}
+function toShiftsCsv(){
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const head=['halbzeit','block','auf_dem_feld','start','end','dauer'];
+  const rows=(S.game.shifts||[]).map(s=>[
+    s.half,blockName(s.block),s.players.map(nameOf).join('; '),fmt(s.start),fmt(s.end),fmt(s.end-s.start)
+  ].map(q).join(','));
   return [head.map(q).join(','),...rows].join('\n');
 }
 function toEventsCsv(){
